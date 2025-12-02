@@ -1,4 +1,17 @@
-﻿Puzzle1();
+﻿Puzzle2();
+
+static void Puzzle2() {
+    string pip02 = File.ReadAllText("./02.pip");
+    string[] ranges = pip02.Split(',');
+    for (int i = 0; i < ranges.Length; i++) {
+        string[] bounds = ranges[i].Split('-');
+        long lowerBound = long.Parse(bounds[0]);
+        long upperBound = long.Parse(bounds[1]);
+        int lbDigitCount = lowerBound.ToString().Length;
+        int ubDigitCount = upperBound.ToString().Length;
+
+    }
+}
 
 static void Puzzle1() {
     string[] pip01 = File.ReadAllLines("./01.pip");
