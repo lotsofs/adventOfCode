@@ -10,9 +10,91 @@ internal class Program {
         if (Puzzle2("./02ex.pip") != 1227775554) {
             throw new Exception("PUZZLE 2 EXAMPLE FAILED");
         }
+        if (Puzzle3("./03ex.pip") != 3121910778619) {
+            throw new Exception("PUZZLE 3 EXAMPLE FAILED");
+        }
         DumpTime("END OF EXAMPLES. START OF REAL PUZZLES");
         Puzzle1();
         Puzzle2();
+        Puzzle3();
+
+        static long Puzzle3(string fileName = "./03.pip") {
+            DumpTime("Puzzle 3 read start now");
+            string[] pip03 = File.ReadAllLines(fileName);
+
+            char x = '0';
+            int password1 = 0;
+            long password2 = 0;
+
+            DumpTime("Puzzle 3 calc start now");
+            foreach (string bank in pip03) {
+                int battery1 = x;
+                int battery2 = x;    
+                for (int i = 0; i < bank.Length; i++) {
+                    int battery = bank[i];
+                    if (i < bank.Length - 1 && battery > battery1) {
+                        battery1 = battery;
+                        battery2 = x;
+                    }
+                    else if (battery > battery2) {
+                        battery2 = battery;
+                    }
+                }
+                battery1 -= x;
+                battery1 *= 10;
+                battery2 -= x;
+                password1 += battery1 + battery2;
+            }
+            Console.WriteLine("password1: " + password1);
+
+            DumpTime("Puzzle 3 start phase 2");
+            foreach (string bank in pip03) {
+                List<int> batterySequence = new List<int>();
+                for (int i = bank.Length - 12; i <= bank.Length - 1; i++) {
+                    batterySequence.Add(bank[i]-x);
+                }
+
+                char searchTarget = '9';
+                int minIndex = 0;
+                int maxIndex = bank.Length - 12;
+                int index = minIndex;
+                int emergency = 200*200*12;
+                int establishedBatteries = 0;
+                while (establishedBatteries < 12) {
+                    emergency--;
+                    if (emergency < 0) {
+                        break;
+                    }
+                    if (searchTarget < batterySequence[establishedBatteries]) {
+                        break;
+                    }
+                    int currentChar = bank[index] - x;
+                    if (currentChar == searchTarget) {
+                        batterySequence[establishedBatteries] = currentChar;
+                        establishedBatteries++;
+                        index++;
+                        minIndex = index;
+                        maxIndex++;
+                        continue;
+                    }    
+                    if (index == maxIndex) {
+                        searchTarget--;
+                        index = minIndex;
+                        continue;
+                    }
+                    index++;
+                }
+                long batSeq = 0;
+                for (int i = 0; i < batterySequence.Count; i++) {
+                    batSeq += batterySequence[i] * (long)Math.Pow(10, 11-i);
+                }
+                password2 += batSeq;
+            }
+
+            DumpTime("day 3 end");
+            Console.WriteLine("password2: " + password2);
+            return password2;
+        }
 
         static long Puzzle2(string fileName = "./02.pip") {
             DumpTime("Puzzle 2 start read");
