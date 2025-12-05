@@ -1,7 +1,20 @@
 ﻿using System.Diagnostics;
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 internal class Program {
+
+    public class NumbersRange(long lo, long hi)
+    {
+        public long low = lo;
+        public long high = hi;
+        public bool ignored = false;
+
+        public bool Contains(long n) {
+            return n >= low && n <= high;
+        }
+    }
+    
     private static readonly Stopwatch stopwatch = Stopwatch.StartNew();
     private static long lastTick = 0;
 
@@ -17,6 +30,73 @@ internal class Program {
         Puzzle1();
         Puzzle2();
         Puzzle3();
+        Puzzle4();
+
+        static long Puzzle4(string fileName = "./04.pip") {
+            
+            DumpTime("P4 read start");
+            string[] pip04 = File.ReadAllLines(fileName);
+
+            List<NumbersRange> ranges = new List<NumbersRange>();
+
+            bool readingRanges = true;
+            int password1 = 0;
+
+            DumpTime("P4 A1 calc start");
+            foreach (string line in pip04) {
+                if (string.IsNullOrEmpty(line)) {
+                    readingRanges = false;
+                    continue;
+                }
+                if (!readingRanges) {
+                    long num = long.Parse(line);
+                    for (int i = 0; i < ranges.Count; i++) {
+                        if (ranges[i].Contains(num)) {
+                            password1++;
+                            break;
+                        }
+                    }
+                    continue;
+                }
+                string[] halves = line.Split('-');
+                long low = long.Parse(halves[0]);
+                long high = long.Parse(halves[1]);
+                
+                ranges.Add(new NumbersRange(low, high));
+            }
+
+            DumpTime("P4 sort start");
+            ranges = ranges.OrderBy(r => r.low).ToList();
+            DumpTime("P4 A2 start");
+            long password2 = 0;
+
+            for (int j = 0; j < ranges.Count; j++) {
+                NumbersRange workingRange = ranges[j];
+                if (workingRange.ignored) {
+                    continue;
+                }
+                for (int i = j+1; i < ranges.Count; i++) {
+                    NumbersRange comparingRange = ranges[i];
+                    if (comparingRange.low > workingRange.high) {
+                        password2 += workingRange.high - workingRange.low + 1;
+                        break;
+                    }
+                    workingRange.high = Math.Max(workingRange.high, comparingRange.high);
+                    comparingRange.ignored = true;
+                    if (i == ranges.Count - 1) {
+                        password2 += workingRange.high - workingRange.low + 1;
+                    }
+                }
+            }
+            foreach (NumbersRange r in ranges) {
+                Console.WriteLine($"{r.low:N0}  -  {r.high:N0} " + (r.ignored ? "" : "REAL"));
+            }
+
+            DumpTime("P4 done");
+            Console.WriteLine("PW1 = " + password1);
+            Console.WriteLine("PW2 = " + password2);
+            return 0;
+        }
 
         static long Puzzle3(string fileName = "./03.pip") {
             DumpTime("Puzzle 3 read start now");
