@@ -30,9 +30,9 @@ internal class Program {
         Puzzle1();
         Puzzle2();
         Puzzle3();
-        Puzzle4();
+        Puzzle5();
 
-        static long Puzzle4(string fileName = "./04.pip") {
+        static long Puzzle5(string fileName = "./05.pip") {
             
             DumpTime("P4 read start");
             string[] pip04 = File.ReadAllLines(fileName);
