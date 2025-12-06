@@ -31,12 +31,12 @@ internal class Program {
 			throw new Exception("PUZZLE 4 EXAMPLE FAILED");
 		}
 		DumpTime("END OF EXAMPLES. START OF REAL PUZZLES");
-		Puzzle1();
-		Puzzle2();
-		Puzzle3();
-		Puzzle4();
-		Puzzle5();
-		Puzzle6();
+		Puzzle1();	// Combo lock puzzle
+		Puzzle2();	// repeated digits serial id puzzle
+		Puzzle3();	// Battery sequence puzzle 2 12
+		Puzzle4();	// Removing carpet rolls puzzle
+		Puzzle5();	// fresh food in ranges ID puzzle
+		Puzzle6();	// vertical rtl math reading puzzle
 
 		static long Puzzle6(string fileName = "./06.pip") {
 			DumpTime("P6S");
