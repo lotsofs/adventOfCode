@@ -1,20 +1,21 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 
 internal class Program {
 
-    public class NumbersRange(long lo, long hi)
-    {
-        public long low = lo;
-        public long high = hi;
-        public bool ignored = false;
+	public class NumbersRange(long lo, long hi)
+	{
+		public long low = lo;
+		public long high = hi;
+		public bool ignored = false;
 
-        public bool Contains(long n) {
-            return n >= low && n <= high;
-        }
-    }
-    
+		public bool Contains(long n) {
+			return n >= low && n <= high;
+		}
+	}
+	
 	private static readonly Stopwatch stopwatch = Stopwatch.StartNew();
 	private static long lastTick = 0;
 
@@ -35,72 +36,200 @@ internal class Program {
 		Puzzle3();
 		Puzzle4();
 		Puzzle5();
+		Puzzle6();
 
-        static long Puzzle5(string fileName = "./05.pip") {
-            
-            DumpTime("P5 read start");
-            string[] pip05 = File.ReadAllLines(fileName);
+		static long Puzzle6(string fileName = "./06.pip") {
+			DumpTime("P6S");
+			string[] pip06 = File.ReadAllLines(fileName);
+			
+			
+			string[] operators = pip06[pip06.Length - 1].Split(new char[]{' '}, StringSplitOptions.RemoveEmptyEntries);
+			long[] totalValueLtr = new long[operators.Length];
+			long password1 = 0;
 
-            List<NumbersRange> ranges = new List<NumbersRange>();
+			for (int i = 0; i <= pip06.Length - 2; i++) {
+				string[] vals = pip06[i].Split(new char[]{' '}, StringSplitOptions.RemoveEmptyEntries);
+				for (int j = 0; j < vals.Length; j++) {
+					if (i == 0) {
+						totalValueLtr[j] = long.Parse(vals[j]);
+					}
+					else if (operators[j] == "*") {
+						totalValueLtr[j] *= long.Parse(vals[j]);
+					}
+					else if (operators[j] == "+") {
+						totalValueLtr[j] += long.Parse(vals[j]);
+					}
+					else {
+						throw new Exception("Invalid operator");
+					}
+				}
+			}
+			foreach (long v in totalValueLtr) {
+				password1 += v;
+			}
+			Console.WriteLine("PW1: " + password1);
+			
+			DumpTime("d6p2");
+			// This basically converts the writing system to a western world human readable
+			// format, so I could do an easier eyeball check on the results.
+			// Then it takes those results and just does the math.
 
-            bool readingRanges = true;
-            int password1 = 0;
+			List<string> pop06 = new List<string>();
+			for (int c = pip06[0].Length-1; c >= 0; c--) {
+				string l = "";
+				for (int r = 0; r < pip06.Length; r++) {
+					char ch = pip06[r][c];
+					if (ch == ' ') {
+						continue;
+					}
+					else if (ch == '*' || ch == '+') {
+						pop06.Add(l);
+						l = ch.ToString();
+					}
+					else {
+						l += ch;
+					}
+				}
+				pop06.Add(l);
+			}
+			File.WriteAllLines("./06.pop", pop06);
+			
+			long password2 = 0;
+			List<long> bank = new List<long>();
+			foreach (string line in pop06) {
+				if (string.IsNullOrEmpty(line)) {
+					continue;
+				}
+				else if (line == "*" || line == "+") {
+					for (int i = 1; i < bank.Count; i++) {
+						bank[0] = line[0]=='*' ? bank[0]*bank[i] : bank[0]+bank[i];
+					}
+					password2 += bank[0];
+					bank.Clear();
+				}
+				else {
+					bank.Add(long.Parse(line));
+				}
+			}
+			Console.WriteLine("PW2: " + password2);
 
-            DumpTime("P5 A1 calc start");
-            foreach (string line in pip05) {
-                if (string.IsNullOrEmpty(line)) {
-                    readingRanges = false;
-                    continue;
-                }
-                if (!readingRanges) {
-                    long num = long.Parse(line);
-                    for (int i = 0; i < ranges.Count; i++) {
-                        if (ranges[i].Contains(num)) {
-                            password1++;
-                            break;
-                        }
-                    }
-                    continue;
-                }
-                string[] halves = line.Split('-');
-                long low = long.Parse(halves[0]);
-                long high = long.Parse(halves[1]);
-                
-                ranges.Add(new NumbersRange(low, high));
-            }
+			DumpTime("d6p2 alternative method (better)");
+			// My dumbass wrote this, then it spat out the wrong answer, and it took me until after I did
+			// the whole thing over the above way that I realized, I had swapped + and * around in this.
+			// So here, have both methods. 
 
-            DumpTime("P5 sort start");
-            ranges = ranges.OrderBy(r => r.low).ToList();
-            DumpTime("P5 A2 start");
-            long password2 = 0;
+			password2 = 0;
+			char op = '?';
+			string[] numbers = new string[pip06.Length - 1];
+			Array.Fill(numbers, string.Empty);
+			
+			int totalColumns = pip06[0].Length;
+			int operatorRow = pip06.Length - 1;
+			int startingColumn = 0;
 
-            for (int j = 0; j < ranges.Count; j++) {
-                NumbersRange workingRange = ranges[j];
-                if (workingRange.ignored) {
-                    continue;
-                }
-                for (int i = j+1; i < ranges.Count; i++) {
-                    NumbersRange comparingRange = ranges[i];
-                    if (comparingRange.low > workingRange.high) {
-                        password2 += workingRange.high - workingRange.low + 1;
-                        break;
-                    }
-                    workingRange.high = Math.Max(workingRange.high, comparingRange.high);
-                    comparingRange.ignored = true;
-                    if (i == ranges.Count - 1) {
-                        password2 += workingRange.high - workingRange.low + 1;
-                    }
-                }
-            }
-            foreach (NumbersRange r in ranges) {
-                Console.WriteLine($"{r.low:N0}  -  {r.high:N0} " + (r.ignored ? "" : "REAL"));
-            }
+			for (int column = 0; column < totalColumns; column++) {
+				char bottomRow = pip06[operatorRow][column];
+				op = bottomRow == ' ' ? op : bottomRow;
+				
+				int emptyRows = 0;
+				for (int row = 0; row < operatorRow; row++) {
+					if (pip06[row][column] == ' ') {
+						emptyRows++;
+					}
+					else {
+						numbers[column - startingColumn] += pip06[row][column];
+					}
+					if (emptyRows == operatorRow || (column == totalColumns-1 && row == operatorRow-1)) {
+						long formulaSolution = long.Parse(numbers[0]);
+						for (int number = 1; number < numbers.Length; number++) {
+							if (numbers[number] == "") {
+								continue;
+							}
+							if (op == '*') {
+								formulaSolution *= long.Parse(numbers[number]);
+							}
+							else if (op == '+') {
+								formulaSolution += long.Parse(numbers[number]);
+							}
+						}
+						password2 += formulaSolution;
+						Array.Fill(numbers, string.Empty);
+						startingColumn = column + 1;
+						break;
+					}
+				}
+			}
+			Console.WriteLine("PW2: " + password2);
+			DumpTime("d6E");
 
-            DumpTime("P5 done");
-            Console.WriteLine("PW1 = " + password1);
-            Console.WriteLine("PW2 = " + password2);
-            return 0;
-        }
+			return 0;
+		}
+
+		static long Puzzle5(string fileName = "./05.pip") {
+			
+			DumpTime("P5 read start");
+			string[] pip05 = File.ReadAllLines(fileName);
+
+			List<NumbersRange> ranges = new List<NumbersRange>();
+
+			bool readingRanges = true;
+			int password1 = 0;
+
+			DumpTime("P5 A1 calc start");
+			foreach (string line in pip05) {
+				if (string.IsNullOrEmpty(line)) {
+					readingRanges = false;
+					continue;
+				}
+				if (!readingRanges) {
+					long num = long.Parse(line);
+					for (int i = 0; i < ranges.Count; i++) {
+						if (ranges[i].Contains(num)) {
+							password1++;
+							break;
+						}
+					}
+					continue;
+				}
+				string[] halves = line.Split('-');
+				long low = long.Parse(halves[0]);
+				long high = long.Parse(halves[1]);
+				
+				ranges.Add(new NumbersRange(low, high));
+			}
+
+			DumpTime("P5 sort start");
+			ranges = ranges.OrderBy(r => r.low).ToList();
+			DumpTime("P5 A2 start");
+			long password2 = 0;
+
+			for (int j = 0; j < ranges.Count; j++) {
+				NumbersRange workingRange = ranges[j];
+				if (workingRange.ignored) {
+					continue;
+				}
+				for (int i = j+1; i < ranges.Count; i++) {
+					NumbersRange comparingRange = ranges[i];
+					if (comparingRange.low > workingRange.high) {
+						password2 += workingRange.high - workingRange.low + 1;
+						break;
+					}
+					workingRange.high = Math.Max(workingRange.high, comparingRange.high);
+					comparingRange.ignored = true;
+					if (i == ranges.Count - 1) {
+						password2 += workingRange.high - workingRange.low + 1;
+					}
+				}
+			}
+			foreach (NumbersRange r in ranges) {
+				Console.WriteLine($"{r.low:N0}  -  {r.high:N0} " + (r.ignored ? "" : "REAL"));
+			}
+
+			DumpTime("P5 done");
+			Console.WriteLine("PW1 = " + password1);
+			Console.WriteLine("PW2 = " + password2);
+			return 0;
+		}
 
 		static long Puzzle4(string fileName = "./04.pip") {
 			DumpTime("P4 start");
