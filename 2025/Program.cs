@@ -30,6 +30,9 @@ internal class Program {
 		if (Puzzle4("./04ex.pip") != 43) {
 			throw new Exception("PUZZLE 4 EXAMPLE FAILED");
 		}
+		if (Puzzle7("./07ex.pip") != 40) {
+			throw new Exception("PUZZLE 7 EXAMPLE FAILED");
+		}
 		DumpTime("END OF EXAMPLES. START OF REAL PUZZLES");
 		Puzzle1();	// Combo lock puzzle
 		Puzzle2();	// repeated digits serial id puzzle
@@ -37,6 +40,61 @@ internal class Program {
 		Puzzle4();	// Removing carpet rolls puzzle
 		Puzzle5();	// fresh food in ranges ID puzzle
 		Puzzle6();	// vertical rtl math reading puzzle
+		Puzzle7();	// tachyon christmas tree beam thing
+
+		static long Puzzle7(string fileName = "./07.pip") {
+			DumpTime("P7S");
+			string[] pip07 = File.ReadAllLines(fileName);
+			char[][] pip07w = new char[pip07.Length][];
+			long[][] pip07i = new long[pip07.Length][];
+			
+			int password1 = 0;
+			long password2 = 0;
+			int startCol = pip07[0].IndexOf('S');
+			int bottomRow = pip07.Length-1;
+			pip07w[0] = pip07[0].ToCharArray();
+			pip07i[0] = new long[pip07[0].Length];
+			pip07i[0][startCol] = 1;
+			int rowLength = pip07w[0].Length;
+			for (int r = 1; r < pip07.Length; r++) {
+				password2 = 0;
+				pip07w[r] = pip07[r].ToCharArray();
+				pip07i[r] = (long[])pip07i[r-1].Clone();
+				for (int c = 0; c < rowLength; c++) {
+					// if (r==bottomRow) {
+					// 	continue;
+					// }
+					char aboveChar = pip07w[r-1][c];
+					char thisChar = pip07w[r][c];
+					long aboveInt = pip07i[r-1][c];
+					if (thisChar == '^' && aboveChar == '|') {
+						password1++;
+						pip07w[r][c-1] = '|';
+						pip07w[r][c+1] = '|';
+
+						pip07i[r][c] = 0;
+						pip07i[r][c-1] += aboveInt;
+						pip07i[r][c+1] += aboveInt;
+					}
+					else if (aboveChar == '|' || aboveChar == 'S') {
+						pip07w[r][c] = '|';
+					}
+					password2 += pip07i[r][c];
+				}
+				Console.WriteLine(new string(pip07w[r]) + " " + password2);
+			}
+			List<string> pop07 = new List<string>();
+			foreach (char[] s in pip07w) {
+				pop07.Add(new string(s));
+			}
+			
+			File.WriteAllLines("./07.pop", pop07);
+			Console.WriteLine("PW1:"+password1);
+			Console.WriteLine("PW2:"+password2);
+			// 1740473197 < ans
+
+			return password2;
+		}
 
 		static long Puzzle6(string fileName = "./06.pip") {
 			DumpTime("P6S");
