@@ -5,8 +5,7 @@ using System.Text.RegularExpressions;
 
 internal class Program {
 
-	public class NumbersRange(long lo, long hi)
-	{
+	public class NumbersRange(long lo, long hi) {
 		public long low = lo;
 		public long high = hi;
 		public bool ignored = false;
@@ -15,32 +14,70 @@ internal class Program {
 			return n >= low && n <= high;
 		}
 	}
+
+	public class Vector3(int x, int y, int z) {
+		public int x = x;
+		public int y = y;
+		public int z = z;
+
+		static public float GetDistanceSquared(Vector3 a, Vector3 b) {
+			int xDist = Math.Abs(a.x - b.x);
+			int yDist = Math.Abs(a.y - b.y);
+			int zDist = Math.Abs(a.z - b.z);
+
+			xDist *= xDist;
+			yDist *= yDist;
+			zDist *= zDist;
+
+			int totalDistanceSquared = xDist+yDist+zDist;
+			return totalDistanceSquared; //Mathf.Sqrt(totalDistance);
+		}
+	}
 	
 	private static readonly Stopwatch stopwatch = Stopwatch.StartNew();
 	private static long lastTick = 0;
 
 	private static void Main(string[] args) {
 		DumpTime("START");
-		if (Puzzle2("./02ex.pip") != 1227775554) {
-			throw new Exception("PUZZLE 2 EXAMPLE FAILED");
+		// if (Puzzle2("./02ex.pip") != 1227775554) {
+		// 	throw new Exception("PUZZLE 2 EXAMPLE FAILED");
+		// }
+		// if (Puzzle3("./03ex.pip") != 3121910778619) {
+		// 	throw new Exception("PUZZLE 3 EXAMPLE FAILED");
+		// }
+		// if (Puzzle4("./04ex.pip") != 43) {
+		// 	throw new Exception("PUZZLE 4 EXAMPLE FAILED");
+		// }
+		// if (Puzzle7("./07ex.pip") != 40) {
+		// 	throw new Exception("PUZZLE 7 EXAMPLE FAILED");
+		// }
+		// DumpTime("END OF EXAMPLES. START OF REAL PUZZLES");
+		// Puzzle1();	// Combo lock puzzle
+		// Puzzle2();	// repeated digits serial id puzzle
+		// Puzzle3();	// Battery sequence puzzle 2 12
+		// Puzzle4();	// Removing carpet rolls puzzle
+		// Puzzle5();	// fresh food in ranges ID puzzle
+		// Puzzle6();	// vertical rtl math reading puzzle
+		// Puzzle7();	// tachyon christmas tree beam thing
+		Puzzle8();
+
+		static long Puzzle8(string fileName = "./08.pip") {
+			DumpTime("P8S")
+			string[] pip08 = File.ReadAllLines(fileName);
+
+			List<Vector3> vectors = new List<Vector3>();
+			for (int i = 1; i < pip08.Length; i++) {
+				string[] coords = pip08[i].Split(',');
+				int x = int.Parse(coords[0]);
+				int y = int.Parse(coords[1]);
+				int z = int.Parse(coords[2]);
+				vectors.Add(new Vector3(x,y,z));
+			}
+			for (int i = 1; i < vectors.Count; i++) {
+
+			}
+
 		}
-		if (Puzzle3("./03ex.pip") != 3121910778619) {
-			throw new Exception("PUZZLE 3 EXAMPLE FAILED");
-		}
-		if (Puzzle4("./04ex.pip") != 43) {
-			throw new Exception("PUZZLE 4 EXAMPLE FAILED");
-		}
-		if (Puzzle7("./07ex.pip") != 40) {
-			throw new Exception("PUZZLE 7 EXAMPLE FAILED");
-		}
-		DumpTime("END OF EXAMPLES. START OF REAL PUZZLES");
-		Puzzle1();	// Combo lock puzzle
-		Puzzle2();	// repeated digits serial id puzzle
-		Puzzle3();	// Battery sequence puzzle 2 12
-		Puzzle4();	// Removing carpet rolls puzzle
-		Puzzle5();	// fresh food in ranges ID puzzle
-		Puzzle6();	// vertical rtl math reading puzzle
-		Puzzle7();	// tachyon christmas tree beam thing
 
 		static long Puzzle7(string fileName = "./07.pip") {
 			DumpTime("P7S");
