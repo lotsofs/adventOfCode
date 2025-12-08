@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
+using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -15,68 +16,138 @@ internal class Program {
 		}
 	}
 
-	public class Vector3(int x, int y, int z) {
-		public int x = x;
-		public int y = y;
-		public int z = z;
+	#region Day 8 stuff
 
-		static public float GetDistanceSquared(Vector3 a, Vector3 b) {
-			int xDist = Math.Abs(a.x - b.x);
-			int yDist = Math.Abs(a.y - b.y);
-			int zDist = Math.Abs(a.z - b.z);
+	public class Junction(long x, long y, long z) {
+		public long x = x;
+		public long y = y;
+		public long z = z;
+
+		static public long GetDistanceSquared(Junction a, Junction b) {
+			long xDist = Math.Abs(a.x - b.x);
+			long yDist = Math.Abs(a.y - b.y);
+			long zDist = Math.Abs(a.z - b.z);
 
 			xDist *= xDist;
 			yDist *= yDist;
 			zDist *= zDist;
 
-			int totalDistanceSquared = xDist+yDist+zDist;
+			long totalDistanceSquared = xDist+yDist+zDist;
 			return totalDistanceSquared; //Mathf.Sqrt(totalDistance);
+		}
+
+		public override string ToString() {
+			return $"Junction({x},{y},{z})";
 		}
 	}
 	
+	public class Circuit {
+		public List<Junction> boxes = new List<Junction>();
+
+		public Circuit(Junction a) {
+			boxes.Add(a);
+		}
+
+		public bool HasBox(Junction box) {
+			foreach (Junction b in boxes) {
+				if (b.x == box.x && b.y == box.y && b.z == box.z) {
+					return true;
+				}
+			}
+			return false;
+		}
+	}
+
+	public class JunctionPair(Junction a, Junction b, long d) {
+		public Junction boxA = a;
+		public Junction boxB = b;
+		public long distance = d;
+	}
+
+	#endregion
+
 	private static readonly Stopwatch stopwatch = Stopwatch.StartNew();
 	private static long lastTick = 0;
 
 	private static void Main(string[] args) {
 		DumpTime("START");
-		// if (Puzzle2("./02ex.pip") != 1227775554) {
-		// 	throw new Exception("PUZZLE 2 EXAMPLE FAILED");
-		// }
-		// if (Puzzle3("./03ex.pip") != 3121910778619) {
-		// 	throw new Exception("PUZZLE 3 EXAMPLE FAILED");
-		// }
-		// if (Puzzle4("./04ex.pip") != 43) {
-		// 	throw new Exception("PUZZLE 4 EXAMPLE FAILED");
-		// }
-		// if (Puzzle7("./07ex.pip") != 40) {
-		// 	throw new Exception("PUZZLE 7 EXAMPLE FAILED");
-		// }
-		// DumpTime("END OF EXAMPLES. START OF REAL PUZZLES");
-		// Puzzle1();	// Combo lock puzzle
-		// Puzzle2();	// repeated digits serial id puzzle
-		// Puzzle3();	// Battery sequence puzzle 2 12
-		// Puzzle4();	// Removing carpet rolls puzzle
-		// Puzzle5();	// fresh food in ranges ID puzzle
-		// Puzzle6();	// vertical rtl math reading puzzle
-		// Puzzle7();	// tachyon christmas tree beam thing
-		Puzzle8();
+		if (Puzzle2("./02ex.pip") != 1227775554) {
+			throw new Exception("PUZZLE 2 EXAMPLE FAILED");
+		}
+		if (Puzzle3("./03ex.pip") != 3121910778619) {
+			throw new Exception("PUZZLE 3 EXAMPLE FAILED");
+		}
+		if (Puzzle4("./04ex.pip") != 43) {
+			throw new Exception("PUZZLE 4 EXAMPLE FAILED");
+		}
+		if (Puzzle7("./07ex.pip") != 40) {
+			throw new Exception("PUZZLE 7 EXAMPLE FAILED");
+		}
+		DumpTime("END OF EXAMPLES. START OF REAL PUZZLES");
+		Puzzle1();	// Combo lock puzzle
+		Puzzle2();	// repeated digits serial id puzzle
+		Puzzle3();	// Battery sequence puzzle 2 12
+		Puzzle4();	// Removing carpet rolls puzzle
+		Puzzle5();	// fresh food in ranges ID puzzle
+		Puzzle6();	// vertical rtl math reading puzzle
+		Puzzle7();	// tachyon christmas tree beam thing
+		Puzzle8();	// Coordinates chaining
 
-		static long Puzzle8(string fileName = "./08.pip") {
-			DumpTime("P8S")
+		static long Puzzle8(string fileName = "./08.pip", int matchesToMake = 1000) {
+			DumpTime("P8S");
 			string[] pip08 = File.ReadAllLines(fileName);
 
-			List<Vector3> vectors = new List<Vector3>();
-			for (int i = 1; i < pip08.Length; i++) {
+			List<Circuit> chains = new List<Circuit>();
+			List<Junction> junctionBoxes = new List<Junction>();
+			for (int i = 0; i < pip08.Length; i++) {
 				string[] coords = pip08[i].Split(',');
 				int x = int.Parse(coords[0]);
 				int y = int.Parse(coords[1]);
 				int z = int.Parse(coords[2]);
-				vectors.Add(new Vector3(x,y,z));
+				Junction box = new Junction(x, y, z);
+				junctionBoxes.Add(box);
+				chains.Add(new Circuit(box));
 			}
-			for (int i = 1; i < vectors.Count; i++) {
+			// Findings not stated in example:
+			// Junctions can connect to as many other junctions, a circuit doesn't need to be circuit but can also branch
+			// Even if "nothing happens!", that still counts as making a connection
+			List<JunctionPair> pairs = new List<JunctionPair>();
 
+			for (int i = 0; i < junctionBoxes.Count; i++) {
+				for (int j = i+1; j < junctionBoxes.Count; j++) {
+					pairs.Add(new JunctionPair(junctionBoxes[i], junctionBoxes[j], Junction.GetDistanceSquared(junctionBoxes[i],junctionBoxes[j]))); 
+				}
 			}
+			pairs = pairs.OrderBy(p => p.distance).ToList();
+			
+			int matchesMade = 0;
 
+			DumpTime("Day 8 overhead done");
+			for (int i = 0; i < pairs.Count; i++) {
+				Junction boxA = pairs[i].boxA;
+				Junction boxB = pairs[i].boxB;
+				Circuit cA = chains.Find(c => c.HasBox(boxA));
+				Circuit cB = chains.Find(c => c.HasBox(boxB));
+				matchesMade++;
+				if (cA != cB) {
+					cA.boxes.AddRange(cB.boxes);
+					chains.Remove(cB);
+					Console.WriteLine($"Match {matchesMade} made: {boxA} & {boxB} -> {cA.boxes.Count} {chains.Count}");
+				}
+				if (matchesMade == matchesToMake) {
+					chains = chains.OrderByDescending(c => c.boxes.Count).ToList();
+					int password1 = chains[0].boxes.Count * chains[1].boxes.Count * chains[2].boxes.Count;
+					DumpTime("PW1 found");
+					Console.WriteLine("PW1: "+password1);
+				}
+				if (chains.Count == 1) {
+					long password2 = boxA.x * boxB.x;
+					DumpTime("PW2 found");
+					Console.WriteLine("PW2: "+password2);
+					break;
+				}
+			}
+			return 0;
 		}
 
 		static long Puzzle7(string fileName = "./07.pip") {
