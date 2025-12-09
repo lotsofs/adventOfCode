@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
@@ -16,14 +17,20 @@ internal class Program {
 		}
 	}
 
-	#region Day 8 stuff
-
-	public class Junction(long x, long y, long z) {
+	public class Vector3(long x, long y, long z) {
 		public long x = x;
 		public long y = y;
 		public long z = z;
 
-		static public long GetDistanceSquared(Junction a, Junction b) {
+		static public long GetVolume(Vector3 a, Vector3 b) {
+			long width = Math.Abs(a.x - b.x) + 1;
+			long height = Math.Abs(a.y - b.y) + 1;
+			long depth = Math.Abs(a.z - a.z) + 1;
+
+			return width*height*depth;
+		}
+
+		static public long GetDistanceSquared(Vector3 a, Vector3 b) {
 			long xDist = Math.Abs(a.x - b.x);
 			long yDist = Math.Abs(a.y - b.y);
 			long zDist = Math.Abs(a.z - b.z);
@@ -37,19 +44,54 @@ internal class Program {
 		}
 
 		public override string ToString() {
-			return $"Junction({x},{y},{z})";
+			return $"Vector3({x},{y},{z})";
 		}
 	}
-	
-	public class Circuit {
-		public List<Junction> boxes = new List<Junction>();
 
-		public Circuit(Junction a) {
+	public class Vector3Pair(Vector3 a, Vector3 b, long d) {
+		public Vector3 boxA = a;
+		public Vector3 boxB = b;
+		public long distance = d;
+	}
+
+	public class Line(Vector3 a, Vector3 b, bool v) {
+		public Vector3 coord1 = a;
+		public Vector3 coord2 = b;
+		public bool vertical = v;
+
+		public long MinX => Math.Min(coord1.x,coord2.x);
+		public long MinY => Math.Min(coord1.y,coord2.y);
+		public long MaxX => Math.Max(coord1.x,coord2.x);
+		public long MaxY => Math.Max(coord1.y,coord2.y);
+
+		public static bool Intersect(Line a, Line b) {
+			if (a.vertical == b.vertical) {
+				return false;
+			}
+			Line verticalLine = a.vertical ? a : b;
+			Line horizontalLine = a.vertical ? b : a;
+			long vx = verticalLine.coord1.x;
+			long hy = horizontalLine.coord1.y;
+			long hx1 = horizontalLine.MinX;
+			long hx2 = horizontalLine.MaxX;
+			long vy1 = verticalLine.MinY;
+			long vy2 = verticalLine.MaxY;
+			if (hx1 < vx && vx < hx2 && vy1 < hy && hy < vy2) {
+				return true;
+			}
+			return false;
+		}
+	}
+
+	public class Circuit {
+		public List<Vector3> boxes = new List<Vector3>();
+
+		public Circuit(Vector3 a) {
 			boxes.Add(a);
 		}
 
-		public bool HasBox(Junction box) {
-			foreach (Junction b in boxes) {
+		public bool HasBox(Vector3 box) {
+			foreach (Vector3 b in boxes) {
 				if (b.x == box.x && b.y == box.y && b.z == box.z) {
 					return true;
 				}
@@ -58,64 +100,127 @@ internal class Program {
 		}
 	}
 
-	public class JunctionPair(Junction a, Junction b, long d) {
-		public Junction boxA = a;
-		public Junction boxB = b;
-		public long distance = d;
-	}
-
-	#endregion
 
 	private static readonly Stopwatch stopwatch = Stopwatch.StartNew();
 	private static long lastTick = 0;
 
 	private static void Main(string[] args) {
 		DumpTime("START");
-		if (Puzzle2("./02ex.pip") != 1227775554) {
-			throw new Exception("PUZZLE 2 EXAMPLE FAILED");
+		// if (Puzzle2("./02ex.pip") != 1227775554) {
+		// 	throw new Exception("PUZZLE 2 EXAMPLE FAILED");
+		// }
+		// if (Puzzle3("./03ex.pip") != 3121910778619) {
+		// 	throw new Exception("PUZZLE 3 EXAMPLE FAILED");
+		// }
+		// if (Puzzle4("./04ex.pip") != 43) {
+		// 	throw new Exception("PUZZLE 4 EXAMPLE FAILED");
+		// }
+		// if (Puzzle7("./07ex.pip") != 40) {
+		// 	throw new Exception("PUZZLE 7 EXAMPLE FAILED");
+		// }
+		// DumpTime("END OF EXAMPLES. START OF REAL PUZZLES");
+		// Puzzle1();	// Combo lock puzzle
+		// Puzzle2();	// repeated digits serial id puzzle
+		// Puzzle3();	// Battery sequence puzzle 2 12
+		// Puzzle4();	// Removing carpet rolls puzzle
+		// Puzzle5();	// fresh food in ranges ID puzzle
+		// Puzzle6();	// vertical rtl math reading puzzle
+		// Puzzle7();	// tachyon christmas tree beam thing
+		// Puzzle8();	// Coordinates chaining
+		Puzzle9();	// Tile area making
+
+		static long Puzzle9(string fileName = "./09.pip") {
+			DumpTime("P9S");
+			string[] pip09 = File.ReadAllLines(fileName);
+
+			List<Vector3> redTiles = new List<Vector3>();
+			List<Line> polygon = new List<Line>();
+
+			for (int i = 0; i < pip09.Length; i++) {
+				string[] coords = pip09[i].Split(',');
+				int x = int.Parse(coords[0]);
+				int y = int.Parse(coords[1]);
+				Vector3 redTile = new Vector3(x, y, 0);
+				if (i > 0) {
+					polygon.Add(new Line(redTile, redTiles[^1], x == redTiles[^1].x ? true : false));
+				}
+				if (i == pip09.Length-1) {
+					polygon.Add(new Line(redTile, redTiles[0], x == redTiles[0].x ? true : false));
+				}
+				redTiles.Add(redTile);
+			}
+			List<Vector3Pair> rectangles = new List<Vector3Pair>();
+
+			for (int i = 0; i < redTiles.Count; i++) {
+				for (int j = i+1; j < redTiles.Count; j++) {
+					rectangles.Add(new Vector3Pair(redTiles[i], redTiles[j], Vector3.GetVolume(redTiles[i], redTiles[j])));
+				}
+			}
+			rectangles = rectangles.OrderByDescending(p => p.distance).ToList();
+
+			DumpTime("Day 9 overhead done");
+			Vector3Pair validRectangle = null;
+			for (int i = 0; i < rectangles.Count; i++) {
+				Vector3Pair rect = rectangles[i];
+				long xa = rect.boxA.x;
+				long ya = rect.boxA.y;
+				long xb = rect.boxB.x;
+				long yb = rect.boxB.y;
+				Line[] rayCasts = new Line[4];
+				rayCasts[0] = new Line(new Vector3(xa, ya, 0), new Vector3(100000, ya, 0), false);
+				rayCasts[1] = new Line(new Vector3(xb, ya, 0), new Vector3(100000, ya, 0), false);
+				rayCasts[2] = new Line(new Vector3(xa, yb, 0), new Vector3(100000, yb, 0), false);
+				rayCasts[3] = new Line(new Vector3(xb, yb, 0), new Vector3(100000, yb, 0), false);
+				// Check if each point of the rectangle is in the triangle
+				bool badRect = false;
+				foreach (Line rc in rayCasts) {
+					int intersects = 0;
+					foreach(Line p in polygon) {
+						if (Line.Intersect(rc,p)) {
+							intersects++;
+						}
+					}
+					if (intersects % 2 == 0) {
+						badRect = true;
+					}
+					if (badRect) {
+						break;
+					}
+				}
+				if (!badRect) {
+					validRectangle = rect;
+					break;
+				}
+			}
+			Console.WriteLine("PW1: "+rectangles[0].distance);
+			Console.WriteLine("PW2: "+validRectangle.distance);
+			// 3489825359 > ans
+			return 0;
 		}
-		if (Puzzle3("./03ex.pip") != 3121910778619) {
-			throw new Exception("PUZZLE 3 EXAMPLE FAILED");
-		}
-		if (Puzzle4("./04ex.pip") != 43) {
-			throw new Exception("PUZZLE 4 EXAMPLE FAILED");
-		}
-		if (Puzzle7("./07ex.pip") != 40) {
-			throw new Exception("PUZZLE 7 EXAMPLE FAILED");
-		}
-		DumpTime("END OF EXAMPLES. START OF REAL PUZZLES");
-		Puzzle1();	// Combo lock puzzle
-		Puzzle2();	// repeated digits serial id puzzle
-		Puzzle3();	// Battery sequence puzzle 2 12
-		Puzzle4();	// Removing carpet rolls puzzle
-		Puzzle5();	// fresh food in ranges ID puzzle
-		Puzzle6();	// vertical rtl math reading puzzle
-		Puzzle7();	// tachyon christmas tree beam thing
-		Puzzle8();	// Coordinates chaining
 
 		static long Puzzle8(string fileName = "./08.pip", int matchesToMake = 1000) {
 			DumpTime("P8S");
 			string[] pip08 = File.ReadAllLines(fileName);
 
 			List<Circuit> chains = new List<Circuit>();
-			List<Junction> junctionBoxes = new List<Junction>();
+			List<Vector3> junctionBoxes = new List<Vector3>();
 			for (int i = 0; i < pip08.Length; i++) {
 				string[] coords = pip08[i].Split(',');
 				int x = int.Parse(coords[0]);
 				int y = int.Parse(coords[1]);
 				int z = int.Parse(coords[2]);
-				Junction box = new Junction(x, y, z);
+				Vector3 box = new Vector3(x, y, z);
 				junctionBoxes.Add(box);
 				chains.Add(new Circuit(box));
 			}
 			// Findings not stated in example:
 			// Junctions can connect to as many other junctions, a circuit doesn't need to be circuit but can also branch
 			// Even if "nothing happens!", that still counts as making a connection
-			List<JunctionPair> pairs = new List<JunctionPair>();
+			List<Vector3Pair> pairs = new List<Vector3Pair>();
 
 			for (int i = 0; i < junctionBoxes.Count; i++) {
 				for (int j = i+1; j < junctionBoxes.Count; j++) {
-					pairs.Add(new JunctionPair(junctionBoxes[i], junctionBoxes[j], Junction.GetDistanceSquared(junctionBoxes[i],junctionBoxes[j]))); 
+					pairs.Add(new Vector3Pair(junctionBoxes[i], junctionBoxes[j], Vector3.GetDistanceSquared(junctionBoxes[i],junctionBoxes[j]))); 
 				}
 			}
 			pairs = pairs.OrderBy(p => p.distance).ToList();
@@ -124,8 +229,8 @@ internal class Program {
 
 			DumpTime("Day 8 overhead done");
 			for (int i = 0; i < pairs.Count; i++) {
-				Junction boxA = pairs[i].boxA;
-				Junction boxB = pairs[i].boxB;
+				Vector3 boxA = pairs[i].boxA;
+				Vector3 boxB = pairs[i].boxB;
 				Circuit cA = chains.Find(c => c.HasBox(boxA));
 				Circuit cB = chains.Find(c => c.HasBox(boxB));
 				matchesMade++;
