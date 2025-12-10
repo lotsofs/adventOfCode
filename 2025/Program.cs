@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.Design;
+﻿using System.ComponentModel;
+using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
@@ -22,10 +23,23 @@ internal class Program {
 		public long y = y;
 		public long z = z;
 
+		public Line RayCastRight() {
+			return new Line(new Vector3(x, y, 0), new Vector3(100000, y, 0), false);
+		}
+		public Line RayCastLeft() {
+			return new Line(new Vector3(x, y, 0), new Vector3(0, y, 0), false);
+		}
+		public Line RayCastUp() {
+			return new Line(new Vector3(x, y, 0), new Vector3(x, 10000, 0), true);
+		}
+		public Line RayCastDown() {
+			return new Line(new Vector3(x, y, 0), new Vector3(x, 0, 0), true);
+		}
+
 		static public long GetVolume(Vector3 a, Vector3 b) {
 			long width = Math.Abs(a.x - b.x) + 1;
 			long height = Math.Abs(a.y - b.y) + 1;
-			long depth = Math.Abs(a.z - a.z) + 1;
+			long depth = Math.Abs(a.z - b.z) + 1;
 
 			return width*height*depth;
 		}
@@ -58,11 +72,47 @@ internal class Program {
 		public Vector3 coord1 = a;
 		public Vector3 coord2 = b;
 		public bool vertical = v;
+		public int collisions = 0;
 
 		public long MinX => Math.Min(coord1.x,coord2.x);
 		public long MinY => Math.Min(coord1.y,coord2.y);
 		public long MaxX => Math.Max(coord1.x,coord2.x);
 		public long MaxY => Math.Max(coord1.y,coord2.y);
+
+		public override string ToString() {
+			return $"Line({coord1.x},{coord1.y}->{coord2.x},{coord2.y}): {collisions}";
+		}
+
+		public static bool IsPointOnLine(Vector3 a, Line b) {
+			if (b.vertical) {
+				if (b.MinX != a.x) {
+					return false;
+				}
+				if (b.MinY <= a.y && a.y <= b.MaxY) {
+					return true;
+				}
+				return false;
+			}
+			if (b.MinY != a.y) {
+				return false;
+			}
+			if (b.MinX <= a.x && a.x <= b.MaxX) {
+				return true;
+			}
+			return false;
+		}
+
+		public static bool PointIntersect(Vector3 p, Line l) {
+			if (l.vertical == false) {
+				return false;
+			}
+			if (l.coord1.x < p.x) {
+				return false;
+			}
+			long y1 = Math.Min(l.coord1.y, l.coord2.y);
+			long y2 = Math.Max(l.coord1.y, l.coord2.y);
+			return y1 < p.y && p.y < y2;
+		}
 
 		public static bool Intersect(Line a, Line b) {
 			if (a.vertical == b.vertical) {
@@ -76,9 +126,10 @@ internal class Program {
 			long hx2 = horizontalLine.MaxX;
 			long vy1 = verticalLine.MinY;
 			long vy2 = verticalLine.MaxY;
+			// Needs to be a proper intersect, not through end points.
 			if (hx1 < vx && vx < hx2 && vy1 < hy && hy < vy2) {
-				return true;
-			}
+				return true; 
+			} 
 			return false;
 		}
 	}
@@ -118,6 +169,9 @@ internal class Program {
 		// if (Puzzle7("./07ex.pip") != 40) {
 		// 	throw new Exception("PUZZLE 7 EXAMPLE FAILED");
 		// }
+		if (Puzzle9("./09ex.pip") != 24) {
+			throw new Exception("PUZZLE 9 EXAMPLE FAILED");
+		}
 		// DumpTime("END OF EXAMPLES. START OF REAL PUZZLES");
 		// Puzzle1();	// Combo lock puzzle
 		// Puzzle2();	// repeated digits serial id puzzle
@@ -126,7 +180,7 @@ internal class Program {
 		// Puzzle5();	// fresh food in ranges ID puzzle
 		// Puzzle6();	// vertical rtl math reading puzzle
 		// Puzzle7();	// tachyon christmas tree beam thing
-		// Puzzle8();	// Coordinates chaining
+		// Puzzle8();	// Coordinates chaining 
 		Puzzle9();	// Tile area making
 
 		static long Puzzle9(string fileName = "./09.pip") {
@@ -160,42 +214,155 @@ internal class Program {
 
 			DumpTime("Day 9 overhead done");
 			Vector3Pair validRectangle = null;
-			for (int i = 0; i < rectangles.Count; i++) {
+			for (int i = 112980%rectangles.Count; i < rectangles.Count; i++) {
+				Console.WriteLine($"Checking rect {i} out of {rectangles.Count}");
 				Vector3Pair rect = rectangles[i];
-				long xa = rect.boxA.x;
-				long ya = rect.boxA.y;
-				long xb = rect.boxB.x;
-				long yb = rect.boxB.y;
-				Line[] rayCasts = new Line[4];
-				rayCasts[0] = new Line(new Vector3(xa, ya, 0), new Vector3(100000, ya, 0), false);
-				rayCasts[1] = new Line(new Vector3(xb, ya, 0), new Vector3(100000, ya, 0), false);
-				rayCasts[2] = new Line(new Vector3(xa, yb, 0), new Vector3(100000, yb, 0), false);
-				rayCasts[3] = new Line(new Vector3(xb, yb, 0), new Vector3(100000, yb, 0), false);
-				// Check if each point of the rectangle is in the triangle
+				long xMin = Math.Min(rect.boxA.x, rect.boxB.x);
+				long yMin = Math.Min(rect.boxA.y, rect.boxB.y);
+				long xMax = Math.Max(rect.boxA.x, rect.boxB.x);
+				long yMax = Math.Max(rect.boxA.y, rect.boxB.y);
 				bool badRect = false;
-				foreach (Line rc in rayCasts) {
-					int intersects = 0;
-					foreach(Line p in polygon) {
-						if (Line.Intersect(rc,p)) {
-							intersects++;
-						}
-					}
-					if (intersects % 2 == 0) {
+
+				foreach (Vector3 rt in redTiles) {
+					if (rt.x < xMax && rt.x > xMin && rt.y < yMax && rt.y > yMin) {
 						badRect = true;
-					}
-					if (badRect) {
 						break;
 					}
 				}
-				if (!badRect) {
-					validRectangle = rect;
-					break;
+				if (badRect) { continue; }
+
+				foreach (Line line in polygon) {
+					long xMinL = Math.Min(line.coord1.x, line.coord2.x)+1;
+					long yMinL = Math.Min(line.coord1.y, line.coord2.y)+1;
+					long xMaxL = Math.Max(line.coord1.x, line.coord2.x)-1;
+					long yMaxL = Math.Max(line.coord1.y, line.coord2.y)-1;
+					if (!(xMin > xMaxL || xMax < xMinL || yMin > yMaxL || yMax < yMinL)) {
+						badRect = true;
+						break;
+					}
 				}
+				if (badRect) { continue; }
+
+				Line[] rectangle = [
+					new Line(new Vector3(xMin,yMin,0), new Vector3(xMin,yMax,0), true), //left
+					new Line(new Vector3(xMax,yMin,0), new Vector3(xMax,yMax,0), true), //right
+					new Line(new Vector3(xMin,yMax,0), new Vector3(xMax,yMax,0), false), //top
+					new Line(new Vector3(xMin,yMin,0), new Vector3(xMax,yMin,0), false), //down
+				];
+				foreach (Line line in polygon) {
+					foreach (Line rectLine in rectangle) {
+						if (Line.Intersect(line, rectLine)) {
+							badRect = true;
+							break;
+						}
+					}
+					if (badRect) { break; }
+				}
+				if (badRect) { continue; }
+				
+				for (long x = xMin; x <= xMax; x++) {
+					bool goodPoint = false;
+					int intersects = 0;
+					foreach (Line line in polygon) {
+						Vector3 point = new Vector3(x, yMax, 0);
+						if (Line.IsPointOnLine(point, line)) {
+							goodPoint = true;
+							break;
+						}
+						if (Line.PointIntersect(point,line)) {
+							intersects++;
+						}
+					}
+					if (intersects % 2 == 1) {
+						goodPoint = true;
+					}
+					if (!goodPoint) {
+						badRect = true;
+					}
+				}
+				if (badRect) { continue; }
+				for (long x = xMin; x <= xMax; x++) {
+					bool goodPoint = false;
+					int intersects = 0;
+					foreach (Line line in polygon) {
+						Vector3 point = new Vector3(x, yMin, 0);
+						if (Line.IsPointOnLine(point, line)) {
+							goodPoint = true;
+							break;
+						}
+						if (Line.PointIntersect(point,line)) {
+							intersects++;
+						}
+					}
+					if (intersects % 2 == 1) {
+						goodPoint = true;
+					}
+					if (!goodPoint) {
+						badRect = true;
+					}
+				}
+				if (badRect) { continue; }
+				for (long y = yMin; y <= yMax; y++) {
+					bool goodPoint = false;
+					int intersects = 0;
+					foreach (Line line in polygon) {
+						Vector3 point = new Vector3(xMin, y, 0);
+						if (Line.IsPointOnLine(point, line)) {
+							goodPoint = true;
+							break;
+						}
+						if (Line.PointIntersect(point,line)) {
+							intersects++;
+						}
+					}
+					if (intersects % 2 == 1) {
+						goodPoint = true;
+					}
+					if (!goodPoint) {
+						badRect = true;
+					}
+				}
+				if (badRect) { continue; }
+				for (long y = yMin; y <= yMax; y++) {
+					bool goodPoint = false;
+					int intersects = 0;
+					foreach (Line line in polygon) {
+						Vector3 point = new Vector3(xMax, y, 0);
+						if (Line.IsPointOnLine(point, line)) {
+							goodPoint = true;
+							break;
+						}
+						if (Line.PointIntersect(point,line)) {
+							intersects++;
+						}
+					}
+					if (intersects % 2 == 1) {
+						goodPoint = true;
+					}
+					if (!goodPoint) {
+						badRect = true;
+					}
+				}
+				if (badRect) { continue; }
+
+
+				validRectangle = rect;
+				break;
 			}
+
 			Console.WriteLine("PW1: "+rectangles[0].distance);
 			Console.WriteLine("PW2: "+validRectangle.distance);
 			// 3489825359 > ans
-			return 0;
+			// 4647960552
+			// 4670816832
+			// 4647960552
+			// 4647960552 > ans (213)
+			// 4647960552 213
+			// 2912415940 inc
+			// 114343950 (102482)
+			// 23646600 (113678)
+			// return validRectangle.distance + 1;
+			return validRectangle.distance;
 		}
 
 		static long Puzzle8(string fileName = "./08.pip", int matchesToMake = 1000) {
