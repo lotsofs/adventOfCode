@@ -23,19 +23,6 @@ internal class Program {
 		public long y = y;
 		public long z = z;
 
-		public Line RayCastRight() {
-			return new Line(new Vector3(x, y, 0), new Vector3(100000, y, 0), false);
-		}
-		public Line RayCastLeft() {
-			return new Line(new Vector3(x, y, 0), new Vector3(0, y, 0), false);
-		}
-		public Line RayCastUp() {
-			return new Line(new Vector3(x, y, 0), new Vector3(x, 10000, 0), true);
-		}
-		public Line RayCastDown() {
-			return new Line(new Vector3(x, y, 0), new Vector3(x, 0, 0), true);
-		}
-
 		static public long GetVolume(Vector3 a, Vector3 b) {
 			long width = Math.Abs(a.x - b.x) + 1;
 			long height = Math.Abs(a.y - b.y) + 1;
@@ -83,25 +70,6 @@ internal class Program {
 			return $"Line({coord1.x},{coord1.y}->{coord2.x},{coord2.y}): {collisions}";
 		}
 
-		public static bool IsPointOnLine(Vector3 a, Line b) {
-			if (b.vertical) {
-				if (b.MinX != a.x) {
-					return false;
-				}
-				if (b.MinY <= a.y && a.y <= b.MaxY) {
-					return true;
-				}
-				return false;
-			}
-			if (b.MinY != a.y) {
-				return false;
-			}
-			if (b.MinX <= a.x && a.x <= b.MaxX) {
-				return true;
-			}
-			return false;
-		}
-
 		public static bool PointIntersect(Vector3 p, Line l) {
 			if (l.vertical == false) {
 				return false;
@@ -112,25 +80,6 @@ internal class Program {
 			long y1 = Math.Min(l.coord1.y, l.coord2.y);
 			long y2 = Math.Max(l.coord1.y, l.coord2.y);
 			return y1 < p.y && p.y < y2;
-		}
-
-		public static bool Intersect(Line a, Line b) {
-			if (a.vertical == b.vertical) {
-				return false;
-			}
-			Line verticalLine = a.vertical ? a : b;
-			Line horizontalLine = a.vertical ? b : a;
-			long vx = verticalLine.coord1.x;
-			long hy = horizontalLine.coord1.y;
-			long hx1 = horizontalLine.MinX;
-			long hx2 = horizontalLine.MaxX;
-			long vy1 = verticalLine.MinY;
-			long vy2 = verticalLine.MaxY;
-			// Needs to be a proper intersect, not through end points.
-			if (hx1 < vx && vx < hx2 && vy1 < hy && hy < vy2) {
-				return true; 
-			} 
-			return false;
 		}
 	}
 
@@ -151,37 +100,184 @@ internal class Program {
 		}
 	}
 
+	public class LightSwitch {
+		public List<int> connections = new List<int>();
+	}
+
+	public class Machine {
+		public List<bool> destination;
+		public List<bool> currentState;
+		public List<LightSwitch> buttons = new List<LightSwitch>();
+		public List<int> destinationJoltage;
+		public List<int> currentJoltage;
+
+		public Machine(string d, string j) {
+			destination = new List<bool>();
+			currentState = new List<bool>();
+			foreach (char c in d) {
+				destination.Add(c == '#');
+				currentState.Add(false);
+			}
+			destinationJoltage = new List<int>();
+			currentJoltage = new List<int>();
+			string[] jolts = j.Split(',');
+			foreach (string jo in jolts) {
+				destinationJoltage.Add(int.Parse(jo));
+				currentJoltage.Add(0);
+			}
+		}
+		
+		public string GetJolts() {
+			string s = "";
+			foreach (int i in currentJoltage) {
+				s += i + ",";
+			}
+			return s;
+		}
+
+		public string GetState() {
+			string s = "";
+			foreach (bool b in currentState) {
+				s += b ? "#" : ".";
+			}
+			return s;
+		}
+
+		public bool IsStateCorrect() {
+			for (int i = 0; i < destination.Count; i++) {
+				if (destination[i] != currentState[i]) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		public bool IsJoltageCorrect() {
+			for (int i = 0; i < destinationJoltage.Count; i++) {
+				if (destinationJoltage[i] != currentJoltage[i]) {
+					return false;
+				}
+			}
+			return true;
+		}
+	}
 
 	private static readonly Stopwatch stopwatch = Stopwatch.StartNew();
 	private static long lastTick = 0;
 
 	private static void Main(string[] args) {
 		DumpTime("START");
-		// if (Puzzle2("./02ex.pip") != 1227775554) {
-		// 	throw new Exception("PUZZLE 2 EXAMPLE FAILED");
-		// }
-		// if (Puzzle3("./03ex.pip") != 3121910778619) {
-		// 	throw new Exception("PUZZLE 3 EXAMPLE FAILED");
-		// }
-		// if (Puzzle4("./04ex.pip") != 43) {
-		// 	throw new Exception("PUZZLE 4 EXAMPLE FAILED");
-		// }
-		// if (Puzzle7("./07ex.pip") != 40) {
-		// 	throw new Exception("PUZZLE 7 EXAMPLE FAILED");
-		// }
+		if (Puzzle2("./02ex.pip") != 1227775554) {
+			throw new Exception("PUZZLE 2 EXAMPLE FAILED");
+		}
+		if (Puzzle3("./03ex.pip") != 3121910778619) {
+			throw new Exception("PUZZLE 3 EXAMPLE FAILED");
+		}
+		if (Puzzle4("./04ex.pip") != 43) {
+			throw new Exception("PUZZLE 4 EXAMPLE FAILED");
+		}
+		if (Puzzle7("./07ex.pip") != 40) {
+			throw new Exception("PUZZLE 7 EXAMPLE FAILED");
+		}
 		if (Puzzle9("./09ex.pip") != 24) {
 			throw new Exception("PUZZLE 9 EXAMPLE FAILED");
 		}
-		// DumpTime("END OF EXAMPLES. START OF REAL PUZZLES");
-		// Puzzle1();	// Combo lock puzzle
-		// Puzzle2();	// repeated digits serial id puzzle
-		// Puzzle3();	// Battery sequence puzzle 2 12
-		// Puzzle4();	// Removing carpet rolls puzzle
-		// Puzzle5();	// fresh food in ranges ID puzzle
-		// Puzzle6();	// vertical rtl math reading puzzle
-		// Puzzle7();	// tachyon christmas tree beam thing
+		DumpTime("END OF EXAMPLES. START OF REAL PUZZLES");
+		Puzzle1();	// Combo lock puzzle
+		Puzzle2();	// repeated digits serial id puzzle
+		Puzzle3();	// Battery sequence puzzle 2 12
+		Puzzle4();	// Removing carpet rolls puzzle
+		Puzzle5();	// fresh food in ranges ID puzzle
+		Puzzle6();	// vertical rtl math reading puzzle
+		Puzzle7();	// tachyon christmas tree beam thing
 		// Puzzle8();	// Coordinates chaining 
 		Puzzle9();	// Tile area making
+		Puzzle10(); // Light indicator switching
+
+		static long Puzzle10(string fileName = "./10.pip") {
+			DumpTime("10 Start");
+			string[] pip10 = File.ReadAllLines(fileName);
+			
+			string[] destinations = [];
+			List<Machine> machines = new List<Machine>();
+			foreach (string pip in pip10) {
+				string[] splits = pip.Split(' ');
+				string dest = splits[0].Substring(1, splits[0].Length-2);
+				string jolts = splits[^1].Substring(1, splits[^1].Length-2);
+				Machine m = new Machine(dest, jolts);
+				for (int i = 1; i <= splits.Length-2; i++) {
+					LightSwitch b = new LightSwitch();
+					string ugh = splits[i].Substring(1, splits[i].Length-2);
+					string[] numbers = ugh.Split(',');
+					foreach (string num in numbers) {
+						b.connections.Add(int.Parse(num));
+					}
+					m.buttons.Add(b);
+				}
+				machines.Add(m);
+			}
+			DumpTime("10.1 Start");
+			// Yeah so IDK any algorithms for this shit. Brute force it is.
+			int totalPresses = 0;
+			int pressCount = 0;
+			int[] presses;
+			bool success = false;
+			for (int mi = 0; mi < machines.Count; mi++) {
+				Machine m = machines[mi];
+				Console.WriteLine($"MACHINE {mi} ===================================================");
+				pressCount = 0;
+				success = false;
+				while (!success) {
+					// No result found, reset machine
+					pressCount++;
+					Console.WriteLine($"Checking for {pressCount} presses ({m.GetState()})");
+					presses = new int[pressCount];
+					bool allCombinationsTried = false;
+					while (!allCombinationsTried) {
+						for (int i = 0; i < m.currentState.Count; i++) {
+							m.currentState[i] = false;
+						}
+						// Console.WriteLine($"Trying  : {m.GetState()} ---------- ({mi}/{machines.Count})");
+						// Press the buttons
+						foreach (int p in presses) {
+							LightSwitch buttonToPress = m.buttons[p];
+							foreach (var conx in buttonToPress.connections) {
+								m.currentState[conx] = !m.currentState[conx];
+							}
+							// Console.WriteLine($"Button {p}: {m.GetState()}");
+						}
+						// Check if the buttons did something
+						if (m.IsStateCorrect()) {
+							Console.WriteLine($"WIN!!");
+							totalPresses += pressCount;
+							success = true;
+							break;
+						}
+						// Change the buttons to press
+						for (int i = 0; i < pressCount; i++) {
+							presses[i]++;
+							if (presses[i] >= m.buttons.Count) {
+								presses[i] = 0;
+								continue;
+							}
+							break;
+						}
+						// Check if we did all possible combinations
+						if (presses.All(n => n == 0)) {
+							allCombinationsTried = true;
+						}
+					}
+				}
+			}
+			int password1 = totalPresses;
+			DumpTime("10.2 Start");
+			// Yeah so IDK any algorithms for this shit either, and the problem is too big for brute force
+			// Give up
+			DumpTime("10E");
+			Console.WriteLine("PW1: " + password1);
+			// Console.WriteLine("PW2: " + password2);
+			return 0;
+		}
 
 		static long Puzzle9(string fileName = "./09.pip") {
 			DumpTime("P9S");
@@ -213,9 +309,11 @@ internal class Program {
 			rectangles = rectangles.OrderByDescending(p => p.distance).ToList();
 
 			DumpTime("Day 9 overhead done");
+			// For all lines of the polygon, we need to check if these pass THROUGH the rectangle.
+			// That is, through the main meat, the inside, of the rectangle, and not just its edge.
+			// A line that goes only to its edge won't split the cube, but dip in the main meat and at least one side has to be OoB
 			Vector3Pair validRectangle = null;
-			for (int i = 112980%rectangles.Count; i < rectangles.Count; i++) {
-				Console.WriteLine($"Checking rect {i} out of {rectangles.Count}");
+			for (int i = 0; i < rectangles.Count; i++) {
 				Vector3Pair rect = rectangles[i];
 				long xMin = Math.Min(rect.boxA.x, rect.boxB.x);
 				long yMin = Math.Min(rect.boxA.y, rect.boxB.y);
@@ -223,145 +321,34 @@ internal class Program {
 				long yMax = Math.Max(rect.boxA.y, rect.boxB.y);
 				bool badRect = false;
 
-				foreach (Vector3 rt in redTiles) {
-					if (rt.x < xMax && rt.x > xMin && rt.y < yMax && rt.y > yMin) {
+				foreach (Line line in polygon) {
+					bool isLineLeftOfSquare = line.coord1.x <= xMin && line.coord2.x <= xMin;
+					bool isLineRightOfSquare = line.coord1.x >= xMax && line.coord2.x >= xMax;
+					bool isLineAboveSquare = line.coord1.y >= yMax && line.coord2.y >= yMax;
+					bool isLineBelowSquare = line.coord1.y <= yMin && line.coord2.y <= yMin;
+					if (!(isLineLeftOfSquare || isLineRightOfSquare || isLineAboveSquare || isLineBelowSquare)) {
 						badRect = true;
 						break;
 					}
 				}
 				if (badRect) { continue; }
-
+				// A quick check to see if the entire meat of the square is not in a concave dip of the polygon
+				// Just a simple raycast done from the center point (or any point) within the meat.
+				Vector3 centerPoint = new Vector3((xMin+xMax)/2, (yMin+yMax)/2, 0);
+				int crossings = 0;
 				foreach (Line line in polygon) {
-					long xMinL = Math.Min(line.coord1.x, line.coord2.x)+1;
-					long yMinL = Math.Min(line.coord1.y, line.coord2.y)+1;
-					long xMaxL = Math.Max(line.coord1.x, line.coord2.x)-1;
-					long yMaxL = Math.Max(line.coord1.y, line.coord2.y)-1;
-					if (!(xMin > xMaxL || xMax < xMinL || yMin > yMaxL || yMax < yMinL)) {
-						badRect = true;
-						break;
-					}
+					crossings += Line.PointIntersect(centerPoint, line) ? 1 : 0;
 				}
-				if (badRect) { continue; }
-
-				Line[] rectangle = [
-					new Line(new Vector3(xMin,yMin,0), new Vector3(xMin,yMax,0), true), //left
-					new Line(new Vector3(xMax,yMin,0), new Vector3(xMax,yMax,0), true), //right
-					new Line(new Vector3(xMin,yMax,0), new Vector3(xMax,yMax,0), false), //top
-					new Line(new Vector3(xMin,yMin,0), new Vector3(xMax,yMin,0), false), //down
-				];
-				foreach (Line line in polygon) {
-					foreach (Line rectLine in rectangle) {
-						if (Line.Intersect(line, rectLine)) {
-							badRect = true;
-							break;
-						}
-					}
-					if (badRect) { break; }
+				if (crossings % 2 == 0) {
+					badRect = true;
+					continue;
 				}
-				if (badRect) { continue; }
-				
-				for (long x = xMin; x <= xMax; x++) {
-					bool goodPoint = false;
-					int intersects = 0;
-					foreach (Line line in polygon) {
-						Vector3 point = new Vector3(x, yMax, 0);
-						if (Line.IsPointOnLine(point, line)) {
-							goodPoint = true;
-							break;
-						}
-						if (Line.PointIntersect(point,line)) {
-							intersects++;
-						}
-					}
-					if (intersects % 2 == 1) {
-						goodPoint = true;
-					}
-					if (!goodPoint) {
-						badRect = true;
-					}
-				}
-				if (badRect) { continue; }
-				for (long x = xMin; x <= xMax; x++) {
-					bool goodPoint = false;
-					int intersects = 0;
-					foreach (Line line in polygon) {
-						Vector3 point = new Vector3(x, yMin, 0);
-						if (Line.IsPointOnLine(point, line)) {
-							goodPoint = true;
-							break;
-						}
-						if (Line.PointIntersect(point,line)) {
-							intersects++;
-						}
-					}
-					if (intersects % 2 == 1) {
-						goodPoint = true;
-					}
-					if (!goodPoint) {
-						badRect = true;
-					}
-				}
-				if (badRect) { continue; }
-				for (long y = yMin; y <= yMax; y++) {
-					bool goodPoint = false;
-					int intersects = 0;
-					foreach (Line line in polygon) {
-						Vector3 point = new Vector3(xMin, y, 0);
-						if (Line.IsPointOnLine(point, line)) {
-							goodPoint = true;
-							break;
-						}
-						if (Line.PointIntersect(point,line)) {
-							intersects++;
-						}
-					}
-					if (intersects % 2 == 1) {
-						goodPoint = true;
-					}
-					if (!goodPoint) {
-						badRect = true;
-					}
-				}
-				if (badRect) { continue; }
-				for (long y = yMin; y <= yMax; y++) {
-					bool goodPoint = false;
-					int intersects = 0;
-					foreach (Line line in polygon) {
-						Vector3 point = new Vector3(xMax, y, 0);
-						if (Line.IsPointOnLine(point, line)) {
-							goodPoint = true;
-							break;
-						}
-						if (Line.PointIntersect(point,line)) {
-							intersects++;
-						}
-					}
-					if (intersects % 2 == 1) {
-						goodPoint = true;
-					}
-					if (!goodPoint) {
-						badRect = true;
-					}
-				}
-				if (badRect) { continue; }
-
-
 				validRectangle = rect;
 				break;
 			}
-
+			DumpTime("Day 9 done");
 			Console.WriteLine("PW1: "+rectangles[0].distance);
 			Console.WriteLine("PW2: "+validRectangle.distance);
-			// 3489825359 > ans
-			// 4647960552
-			// 4670816832
-			// 4647960552
-			// 4647960552 > ans (213)
-			// 4647960552 213
-			// 2912415940 inc
-			// 114343950 (102482)
-			// 23646600 (113678)
-			// return validRectangle.distance + 1;
 			return validRectangle.distance;
 		}
 
