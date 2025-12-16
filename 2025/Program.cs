@@ -167,29 +167,29 @@ internal class Program {
 
 	private static void Main(string[] args) {
 		DumpTime("START");
-		if (Puzzle2("./02ex.pip") != 1227775554) {
-			throw new Exception("PUZZLE 2 EXAMPLE FAILED");
-		}
-		if (Puzzle3("./03ex.pip") != 3121910778619) {
-			throw new Exception("PUZZLE 3 EXAMPLE FAILED");
-		}
-		if (Puzzle4("./04ex.pip") != 43) {
-			throw new Exception("PUZZLE 4 EXAMPLE FAILED");
-		}
-		if (Puzzle7("./07ex.pip") != 40) {
-			throw new Exception("PUZZLE 7 EXAMPLE FAILED");
-		}
-		if (Puzzle9("./09ex.pip") != 24) {
-			throw new Exception("PUZZLE 9 EXAMPLE FAILED");
-		}
+		// if (Puzzle2("./02ex.pip") != 1227775554) {
+		// 	throw new Exception("PUZZLE 2 EXAMPLE FAILED");
+		// }
+		// if (Puzzle3("./03ex.pip") != 3121910778619) {
+		// 	throw new Exception("PUZZLE 3 EXAMPLE FAILED");
+		// }
+		// if (Puzzle4("./04ex.pip") != 43) {
+		// 	throw new Exception("PUZZLE 4 EXAMPLE FAILED");
+		// }
+		// if (Puzzle7("./07ex.pip") != 40) {
+		// 	throw new Exception("PUZZLE 7 EXAMPLE FAILED");
+		// }
+		// if (Puzzle9("./09ex.pip") != 24) {
+		// 	throw new Exception("PUZZLE 9 EXAMPLE FAILED");
+		// }
 		DumpTime("END OF EXAMPLES. START OF REAL PUZZLES");
-		Puzzle1();	// Combo lock puzzle
+		// Puzzle1();	// Combo lock puzzle
 		Puzzle2();	// repeated digits serial id puzzle
-		Puzzle3();	// Battery sequence puzzle 2 12
-		Puzzle4();	// Removing carpet rolls puzzle
-		Puzzle5();	// fresh food in ranges ID puzzle
-		Puzzle6();	// vertical rtl math reading puzzle
-		Puzzle7();	// tachyon christmas tree beam thing
+		// Puzzle3();	// Battery sequence puzzle 2 12
+		// Puzzle4();	// Removing carpet rolls puzzle
+		// Puzzle5();	// fresh food in ranges ID puzzle
+		// Puzzle6();	// vertical rtl math reading puzzle
+		// Puzzle7();	// tachyon christmas tree beam thing
 		// Puzzle8();	// Coordinates chaining 
 		Puzzle9();	// Tile area making
 		Puzzle10(); // Light indicator switching
@@ -217,55 +217,29 @@ internal class Program {
 				machines.Add(m);
 			}
 			DumpTime("10.1 Start");
-			// Yeah so IDK any algorithms for this shit. Brute force it is.
+			
 			int totalPresses = 0;
-			int pressCount = 0;
-			int[] presses;
-			bool success = false;
 			for (int mi = 0; mi < machines.Count; mi++) {
 				Machine m = machines[mi];
-				Console.WriteLine($"MACHINE {mi} ===================================================");
-				pressCount = 0;
-				success = false;
-				while (!success) {
-					// No result found, reset machine
-					pressCount++;
-					Console.WriteLine($"Checking for {pressCount} presses ({m.GetState()})");
-					presses = new int[pressCount];
-					bool allCombinationsTried = false;
-					while (!allCombinationsTried) {
-						for (int i = 0; i < m.currentState.Count; i++) {
-							m.currentState[i] = false;
-						}
-						// Console.WriteLine($"Trying  : {m.GetState()} ---------- ({mi}/{machines.Count})");
-						// Press the buttons
-						foreach (int p in presses) {
-							LightSwitch buttonToPress = m.buttons[p];
+				int totalButtons = m.buttons.Count();
+				int max = 1 << totalButtons;
+				var orderedBits = Enumerable.Range(0, max).OrderBy(v => BitOperations.PopCount((uint)v));
+
+				foreach (int bm in orderedBits) {
+					for (int bit = 0; bit < totalButtons; bit++) {
+						if (((bm >> bit) & 1) == 1) {
+							LightSwitch buttonToPress = m.buttons[bit];
 							foreach (var conx in buttonToPress.connections) {
 								m.currentState[conx] = !m.currentState[conx];
 							}
-							// Console.WriteLine($"Button {p}: {m.GetState()}");
 						}
-						// Check if the buttons did something
-						if (m.IsStateCorrect()) {
-							Console.WriteLine($"WIN!!");
-							totalPresses += pressCount;
-							success = true;
-							break;
-						}
-						// Change the buttons to press
-						for (int i = 0; i < pressCount; i++) {
-							presses[i]++;
-							if (presses[i] >= m.buttons.Count) {
-								presses[i] = 0;
-								continue;
-							}
-							break;
-						}
-						// Check if we did all possible combinations
-						if (presses.All(n => n == 0)) {
-							allCombinationsTried = true;
-						}
+					}
+					if (m.IsStateCorrect()) {
+						totalPresses += BitOperations.PopCount((uint)bm);
+						break;
+					}
+					for (int i = 0; i < m.currentState.Count; i++) {
+						m.currentState[i] = false;
 					}
 				}
 			}
