@@ -308,6 +308,7 @@ internal class Program {
 				Console.WriteLine(pressSeq[0].JoltageEffectToString() + "!!!!11211");
 				pressSeq = m.pressSequences.Where(ps => ps.WillOverblow(m.currentJoltage) == false).ToList();
 				// Todo: This needs a filter by least presses before finding the biggest magnitude
+				// todo: Why the hell does bestSeq.jetostring not match s???
 				var bestSeq = pressSeq.MaxBy(ps => ps.JoltageEffectMagnitude());
 				Console.WriteLine("aa: " + bestSeq.JoltageEffectToString());
 				Console.WriteLine(m.GetJolts());
