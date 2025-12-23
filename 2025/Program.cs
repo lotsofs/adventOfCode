@@ -104,18 +104,66 @@ internal class Program {
 		public List<int> connections = new List<int>();
 	}
 
+	public class PressSequence {
+		public List<LightSwitch> buttons = new List<LightSwitch>();
+		public List<bool> endState = new List<bool>();
+		public List<int> joltageEffect = new List<int>();
+
+		public PressSequence(int count) {
+			endState = Enumerable.Repeat(false, count).ToList();
+			joltageEffect = Enumerable.Repeat(0, count).ToList();
+		}
+
+		public string StateToString() {
+			string s = "";
+			foreach (bool b in endState) {
+				s += b ? '#' : '.';
+			}
+			return s;
+		}
+
+		public int JoltageEffectMagnitude() {
+			int m = 0;
+			foreach (int j in joltageEffect) {
+				m += j;
+			}
+			return m;
+		}
+
+		public string JoltageEffectToString() {
+			string s = "";
+			string s2 = "";
+			foreach (int j in joltageEffect) {
+				s += j%2==0 ? 'E' : 'O'; 
+				s2 += j;
+			}
+			Console.WriteLine(s + ".");
+			Console.WriteLine(s2 + ".");
+			return s;
+		}
+
+		public bool WillOverblow(List<int> jolts) {
+			for (int i = 0; i < joltageEffect.Count; i++) {
+				if (joltageEffect[i] > jolts[i]) {
+					return true;
+				}
+			}
+			return false;
+		}
+	}
+
 	public class Machine {
-		public List<bool> destination;
+		public string destination;
 		public List<bool> currentState;
 		public List<LightSwitch> buttons = new List<LightSwitch>();
 		public List<int> destinationJoltage;
 		public List<int> currentJoltage;
+		public List<PressSequence> pressSequences = new List<PressSequence>();
 
 		public Machine(string d, string j) {
-			destination = new List<bool>();
+			destination = d;
 			currentState = new List<bool>();
 			foreach (char c in d) {
-				destination.Add(c == '#');
 				currentState.Add(false);
 			}
 			destinationJoltage = new List<int>();
@@ -123,16 +171,15 @@ internal class Program {
 			string[] jolts = j.Split(',');
 			foreach (string jo in jolts) {
 				destinationJoltage.Add(int.Parse(jo));
-				currentJoltage.Add(0);
+				currentJoltage.Add(int.Parse(jo));
 			}
 		}
 		
-		public string GetJolts() {
-			string s = "";
-			foreach (int i in currentJoltage) {
-				s += i + ",";
+		public void ResetState() {
+			for (int i = 0; i < currentState.Count; i++) {
+				currentState[i] = false;
+				currentJoltage[i] = destinationJoltage[i];
 			}
-			return s;
 		}
 
 		public string GetState() {
@@ -143,18 +190,36 @@ internal class Program {
 			return s;
 		}
 
-		public bool IsStateCorrect() {
-			for (int i = 0; i < destination.Count; i++) {
-				if (destination[i] != currentState[i]) {
-					return false;
+		public void PreCalculate(int meterCount) {
+			int totalButtons = buttons.Count();
+			int max = 1 << totalButtons;
+			for (int i = 0; i < max; i++) {
+				PressSequence ps = new PressSequence(meterCount);
+				pressSequences.Add(ps);
+				for (int bit = 0; bit < totalButtons; bit++) {
+					if (((i >> bit) & 1) == 1) {
+						LightSwitch buttonToPress = buttons[bit];
+						ps.buttons.Add(buttonToPress);
+						foreach (var conx in buttonToPress.connections) {
+							ps.endState[conx] = !ps.endState[conx];
+							ps.joltageEffect[conx]++;
+						}
+					}
 				}
 			}
-			return true;
+		}
+
+		public string GetJolts() {
+			string s = "";
+			foreach (int i in currentJoltage) {
+				s += i + ",";
+			}
+			return s;
 		}
 
 		public bool IsJoltageCorrect() {
 			for (int i = 0; i < destinationJoltage.Count; i++) {
-				if (destinationJoltage[i] != currentJoltage[i]) {
+				if (destinationJoltage[i] != 0) {
 					return false;
 				}
 			}
@@ -194,7 +259,7 @@ internal class Program {
 		Puzzle9();	// Tile area making
 		Puzzle10(); // Light indicator switching
 
-		static long Puzzle10(string fileName = "./10.pip") {
+		static long Puzzle10(string fileName = "./10ex.pip") {
 			DumpTime("10 Start");
 			string[] pip10 = File.ReadAllLines(fileName);
 			
@@ -214,6 +279,7 @@ internal class Program {
 					}
 					m.buttons.Add(b);
 				}
+				m.PreCalculate(dest.Length);
 				machines.Add(m);
 			}
 			DumpTime("10.1 Start");
@@ -221,32 +287,40 @@ internal class Program {
 			int totalPresses = 0;
 			for (int mi = 0; mi < machines.Count; mi++) {
 				Machine m = machines[mi];
-				int totalButtons = m.buttons.Count();
-				int max = 1 << totalButtons;
-				var orderedBits = Enumerable.Range(0, max).OrderBy(v => BitOperations.PopCount((uint)v));
-
-				foreach (int bm in orderedBits) {
-					for (int bit = 0; bit < totalButtons; bit++) {
-						if (((bm >> bit) & 1) == 1) {
-							LightSwitch buttonToPress = m.buttons[bit];
-							foreach (var conx in buttonToPress.connections) {
-								m.currentState[conx] = !m.currentState[conx];
-							}
-						}
-					}
-					if (m.IsStateCorrect()) {
-						totalPresses += BitOperations.PopCount((uint)bm);
-						break;
-					}
-					for (int i = 0; i < m.currentState.Count; i++) {
-						m.currentState[i] = false;
-					}
-				}
+				var pressSeq = m.pressSequences.Where(ps => ps.StateToString() == m.destination).ToList();
+				var bestSeq = pressSeq.MinBy(ps => ps.buttons.Count);
+				totalPresses += bestSeq.buttons.Count;
 			}
 			int password1 = totalPresses;
 			DumpTime("10.2 Start");
-			// Yeah so IDK any algorithms for this shit either, and the problem is too big for brute force
-			// Give up
+			for (int mi = 0; mi < machines.Count; mi++) {
+				Machine m = machines[mi];
+				m.ResetState();
+				// Step 1: Get all joltages to even
+				string s = "";
+				foreach (int j in m.currentJoltage) {
+					Console.WriteLine(j);
+					s += j%2==0 ? 'E' : 'O';
+					Console.WriteLine(s + "!!!");
+				}
+				var pressSeq = m.pressSequences.Where(ps => ps.JoltageEffectToString() == s).ToList();
+				Console.WriteLine(s + "!!!!!!1");
+				Console.WriteLine(pressSeq[0].JoltageEffectToString() + "!!!!11211");
+				pressSeq = m.pressSequences.Where(ps => ps.WillOverblow(m.currentJoltage) == false).ToList();
+				// Todo: This needs a filter by least presses before finding the biggest magnitude
+				var bestSeq = pressSeq.MaxBy(ps => ps.JoltageEffectMagnitude());
+				Console.WriteLine("aa: " + bestSeq.JoltageEffectToString());
+				Console.WriteLine(m.GetJolts());
+				foreach (LightSwitch b in bestSeq.buttons) {
+					foreach (int conx in b.connections) {
+						m.currentJoltage[conx]--;
+					}
+					Console.WriteLine(m.GetJolts());
+				}
+				Console.WriteLine("--");
+			}
+			// Step 2: Cut in half
+			// Step 3: ...
 			DumpTime("10E");
 			Console.WriteLine("PW1: " + password1);
 			// Console.WriteLine("PW2: " + password2);
