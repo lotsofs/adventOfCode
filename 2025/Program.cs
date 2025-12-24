@@ -130,6 +130,10 @@ internal class Program {
 			return m;
 		}
 
+		public bool CompareJoltageString(string ss) {
+			return JoltageEffectToString() == ss;
+		}
+
 		public string JoltageEffectToString() {
 			string s = "";
 			string s2 = "";
@@ -137,8 +141,6 @@ internal class Program {
 				s += j%2==0 ? 'E' : 'O'; 
 				s2 += j;
 			}
-			Console.WriteLine(s + ".");
-			Console.WriteLine(s2 + ".");
 			return s;
 		}
 
@@ -193,7 +195,7 @@ internal class Program {
 		public void PreCalculate(int meterCount) {
 			int totalButtons = buttons.Count();
 			int max = 1 << totalButtons;
-			for (int i = 0; i < max; i++) {
+			for (int i = 1; i < max; i++) {
 				PressSequence ps = new PressSequence(meterCount);
 				pressSequences.Add(ps);
 				for (int bit = 0; bit < totalButtons; bit++) {
@@ -224,6 +226,15 @@ internal class Program {
 				}
 			}
 			return true;
+		}
+
+		public bool IsJoltageBlown() {
+			for (int i = 0; i < destinationJoltage.Count; i++) {
+				if (destinationJoltage[i] < 0) {
+					return true;
+				}
+			}
+			return false;
 		}
 	}
 
@@ -292,39 +303,57 @@ internal class Program {
 				totalPresses += bestSeq.buttons.Count;
 			}
 			int password1 = totalPresses;
+			int password2 = 0;
 			DumpTime("10.2 Start");
 			for (int mi = 0; mi < machines.Count; mi++) {
 				Machine m = machines[mi];
 				m.ResetState();
 				// Step 1: Get all joltages to even
-				string s = "";
-				foreach (int j in m.currentJoltage) {
-					Console.WriteLine(j);
-					s += j%2==0 ? 'E' : 'O';
-					Console.WriteLine(s + "!!!");
-				}
-				var pressSeq = m.pressSequences.Where(ps => ps.JoltageEffectToString() == s).ToList();
-				Console.WriteLine(s + "!!!!!!1");
-				Console.WriteLine(pressSeq[0].JoltageEffectToString() + "!!!!11211");
-				pressSeq = m.pressSequences.Where(ps => ps.WillOverblow(m.currentJoltage) == false).ToList();
-				// Todo: This needs a filter by least presses before finding the biggest magnitude
-				// todo: Why the hell does bestSeq.jetostring not match s???
-				var bestSeq = pressSeq.MaxBy(ps => ps.JoltageEffectMagnitude());
-				Console.WriteLine("aa: " + bestSeq.JoltageEffectToString());
-				Console.WriteLine(m.GetJolts());
-				foreach (LightSwitch b in bestSeq.buttons) {
-					foreach (int conx in b.connections) {
-						m.currentJoltage[conx]--;
+				while (true) {
+					StringBuilder s = new StringBuilder();
+					bool hasOdds = false;
+					foreach (int j in m.currentJoltage) {
+						int modJ = j % 2;
+						s.Append(modJ == 0 ? 'E' : 'O');
+						hasOdds |= modJ == 1;
 					}
+					if (!hasOdds) {
+						s.Clear();
+						foreach (int j in m.currentJoltage) {
+							int modJ = (j/2)%2;
+							s.Append(modJ == 0 ? 'E' : 'O');
+						}
+					}
+					var pressSeq = m.pressSequences.Where(ps => ps.CompareJoltageString(s.ToString())).ToList();
+					pressSeq = pressSeq.Where(ps => ps.WillOverblow(m.currentJoltage) == false).ToList();
+					Console.WriteLine(pressSeq.Count + "!!!!!!!!!!!!!!");
+					int minPresses = pressSeq.Min(ps => ps.buttons.Count);
+					pressSeq = pressSeq.Where(ps => ps.buttons.Count == minPresses).ToList();
+					var bestSeq = pressSeq.MaxBy(ps => ps.JoltageEffectMagnitude());
+					password2 += minPresses;
+					Console.WriteLine("-");
 					Console.WriteLine(m.GetJolts());
+					foreach (LightSwitch b in bestSeq.buttons) {
+						foreach (int conx in b.connections) {
+							m.currentJoltage[conx]--;
+						}
+						Console.WriteLine(m.GetJolts());
+					}
+					// Step 2: Cut in half
+					if (m.IsJoltageCorrect()) {
+						Console.WriteLine("win1!!!");
+						break;
+					}
+					if (m.IsJoltageBlown()) {
+						Console.WriteLine("bam");
+						break;
+					}
 				}
-				Console.WriteLine("--");
 			}
-			// Step 2: Cut in half
 			// Step 3: ...
 			DumpTime("10E");
 			Console.WriteLine("PW1: " + password1);
-			// Console.WriteLine("PW2: " + password2);
+			Console.WriteLine("PW2: " + password2);
 			return 0;
 		}
 
